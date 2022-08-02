@@ -63,8 +63,7 @@ def _build_check_info(app_options):
     status = {'install': [], 'uninstall': [], 'update': []}
     for msg in messages:
         for key, pattern in _message_map.items():
-            match = pattern.match(msg)
-            if match:
+            if match := pattern.match(msg):
                 status[key].append(match.group('name'))
     return status
 

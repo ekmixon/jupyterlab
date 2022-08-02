@@ -1,6 +1,7 @@
 # coding: utf-8
 """A tornado based Jupyter lab server."""
 
+
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
 
@@ -81,7 +82,7 @@ build_flags['splice-source'] = (
 version = __version__
 app_version = get_app_version()
 if version != app_version:
-    version = '%s (dev), %s (app)' % (__version__, app_version)
+    version = f'{__version__} (dev), {app_version} (app)'
 
 buildFailureMsg = """Build failed.
 Troubleshooting: If the build failed due to an out-of-memory error, you
@@ -164,7 +165,7 @@ class LabBuildApp(JupyterApp, DebugLogFileMixin):
         self.log.info('JupyterLab %s', version)
         with self.debug_logging():
             if self.pre_clean:
-                self.log.info('Cleaning %s' % app_dir)
+                self.log.info(f'Cleaning {app_dir}')
                 clean(app_options=app_options)
             self.log.info('Building in %s', app_dir)
             try:
@@ -253,9 +254,9 @@ class LabPathApp(JupyterApp):
         '/lab/workspaces' in the default Jupyter configuration directory.
     """
     def start(self):
-        print('Application directory:   %s' % get_app_dir())
-        print('User Settings directory: %s' % get_user_settings_dir())
-        print('Workspaces directory: %s' % get_workspaces_dir())
+        print(f'Application directory:   {get_app_dir()}')
+        print(f'User Settings directory: {get_user_settings_dir()}')
+        print(f'Workspaces directory: {get_workspaces_dir()}')
 
 
 class LabWorkspaceExportApp(JupyterApp):
@@ -279,8 +280,7 @@ class LabWorkspaceExportApp(JupyterApp):
             self.exit(1)
 
         workspaces_url = ujoin(app_url, 'workspaces')
-        raw = (app_url if not self.extra_args
-               else ujoin(workspaces_url, self.extra_args[0]))
+        raw = ujoin(workspaces_url, self.extra_args[0]) if self.extra_args else app_url
         slug = slugify(raw, base_url)
         workspace_path = pjoin(directory, slug + WORKSPACE_EXTENSION)
 
@@ -289,9 +289,9 @@ class LabWorkspaceExportApp(JupyterApp):
                 try:  # to load the workspace file.
                     print(fid.read())
                 except Exception as e:
-                    print(json.dumps(dict(data=dict(), metadata=dict(id=raw))))
+                    print(json.dumps(dict(data={}, metadata=dict(id=raw))))
         else:
-            print(json.dumps(dict(data=dict(), metadata=dict(id=raw))))
+            print(json.dumps(dict(data={}, metadata=dict(id=raw))))
 
 
 class LabWorkspaceImportApp(JupyterApp):
@@ -328,7 +328,7 @@ class LabWorkspaceImportApp(JupyterApp):
             print('One argument is required for workspace import.')
             self.exit(1)
 
-        workspace = dict()
+        workspace = {}
         with self._smart_open() as fid:
             try:  # to load, parse, and validate the workspace file.
                 workspace = self._validate(fid, base_url, app_url, workspaces_url)
@@ -350,21 +350,20 @@ class LabWorkspaceImportApp(JupyterApp):
         with open(workspace_path, 'w') as fid:
             fid.write(json.dumps(workspace))
 
-        print('Saved workspace: %s' % workspace_path)
+        print(f'Saved workspace: {workspace_path}')
 
     def _smart_open(self):
         file_name = self.extra_args[0]
 
         if file_name == '-':
             return sys.stdin
-        else:
-            file_path = osp.abspath(file_name)
+        file_path = osp.abspath(file_name)
 
-            if not osp.exists(file_path):
-                print('%s does not exist.' % file_name)
-                self.exit(1)
+        if not osp.exists(file_path):
+            print(f'{file_name} does not exist.')
+            self.exit(1)
 
-            return open(file_path)
+        return open(file_path)
 
     def _validate(self, data, base_url, app_url, workspaces_url):
         workspace = json.load(data)
@@ -375,20 +374,19 @@ class LabWorkspaceImportApp(JupyterApp):
         # If workspace_name is set in config, inject the
         # name into the workspace metadata.
         if self.workspace_name is not None:
-            if self.workspace_name == "":
-                workspace_id = ujoin(base_url, app_url)
-            else:
-                workspace_id = ujoin(base_url, workspaces_url, self.workspace_name)
+            workspace_id = (
+                ujoin(base_url, app_url)
+                if self.workspace_name == ""
+                else ujoin(base_url, workspaces_url, self.workspace_name)
+            )
+
             workspace['metadata'] = {'id': workspace_id}
-        # else check that the workspace_id is valid.
+        elif 'id' not in workspace['metadata']:
+            raise Exception('The `id` field is missing in `metadata`.')
         else:
-            if 'id' not in workspace['metadata']:
-                raise Exception('The `id` field is missing in `metadata`.')
-            else:
-                id = workspace['metadata']['id']
-                if id != ujoin(base_url, app_url) and not id.startswith(ujoin(base_url, workspaces_url)):
-                    error = '%s does not match app_url or start with workspaces_url.'
-                    raise Exception(error % id)
+            id = workspace['metadata']['id']
+            if id != ujoin(base_url, app_url) and not id.startswith(ujoin(base_url, workspaces_url)):
+                raise Exception(f'{id} does not match app_url or start with workspaces_url.')
 
         return workspace
 
@@ -461,8 +459,7 @@ if LicensesApp is not None:
             return pjoin(self.app_dir, 'static')
 
 
-aliases = dict(base_aliases)
-aliases.update({
+aliases = dict(base_aliases) | {
     'ip': 'ServerApp.ip',
     'port': 'ServerApp.port',
     'port-retries': 'ServerApp.port_retries',
@@ -472,7 +469,7 @@ aliases.update({
     'notebook-dir': 'ServerApp.root_dir',
     'browser': 'ServerApp.browser',
     'pylab': 'ServerApp.pylab',
-})
+}
 
 
 class LabApp(NBClassicConfigShimMixin, LabServerApp):
@@ -646,9 +643,7 @@ class LabApp(NBClassicConfigShimMixin, LabServerApp):
 
     @default('themes_dir')
     def _default_themes_dir(self):
-        if self.override_theme_url:
-            return ''
-        return pjoin(self.app_dir, 'themes')
+        return '' if self.override_theme_url else pjoin(self.app_dir, 'themes')
 
     @default('static_dir')
     def _default_static_dir(self):
@@ -658,16 +653,13 @@ class LabApp(NBClassicConfigShimMixin, LabServerApp):
     def _default_static_url_prefix(self):
         if self.override_static_url:
             return self.override_static_url
-        else:
-            static_url = "/static/{name}/".format(
-            name=self.name)
-            return ujoin(self.serverapp.base_url, static_url)
+        static_url = "/static/{name}/".format(
+        name=self.name)
+        return ujoin(self.serverapp.base_url, static_url)
 
     @default('theme_url')
     def _default_theme_url(self):
-        if self.override_theme_url:
-            return self.override_theme_url
-        return ''
+        return self.override_theme_url or ''
 
     def initialize_templates(self):
         # Determine which model to run JupyterLab
@@ -712,8 +704,6 @@ class LabApp(NBClassicConfigShimMixin, LabServerApp):
 
     def initialize_handlers(self):
 
-        handlers = []
-
         # Set config for Jupyterlab
         page_config = self.serverapp.web_app.settings.setdefault('page_config_data', {})
         page_config.setdefault('buildAvailable', not self.core_mode and not self.dev_mode)
@@ -728,18 +718,15 @@ class LabApp(NBClassicConfigShimMixin, LabServerApp):
         # Client-side code assumes notebookVersion is a JSON-encoded string
         page_config['notebookVersion'] = json.dumps(jpserver_version_info)
 
-        self.log.info('JupyterLab extension loaded from %s' % HERE)
-        self.log.info('JupyterLab application directory is %s' % self.app_dir)
+        self.log.info(f'JupyterLab extension loaded from {HERE}')
+        self.log.info(f'JupyterLab application directory is {self.app_dir}')
 
         build_handler_options = AppOptions(logger=self.log, app_dir=self.app_dir, labextensions_path = self.extra_labextensions_path + self.labextensions_path, splice_source=self.splice_source)
         builder = Builder(self.core_mode, app_options=build_handler_options)
         build_handler = (build_path, BuildHandler, {'builder': builder})
-        handlers.append(build_handler)
-
         # Yjs Echo WebSocket handler
         yjs_echo_handler = (r"/api/yjs/(.*)", YjsEchoWebSocket)
-        handlers.append(yjs_echo_handler)
-
+        handlers = [build_handler, yjs_echo_handler]
         errored = False
 
         if self.core_mode:
@@ -752,8 +739,7 @@ class LabApp(NBClassicConfigShimMixin, LabServerApp):
         else:
             if self.splice_source:
                 ensure_dev(self.log)
-            msgs = ensure_app(self.app_dir)
-            if msgs:
+            if msgs := ensure_app(self.app_dir):
                 [self.log.error(msg) for msg in msgs]
                 handler = (self.app_url, ErrorHandler, { 'messages': msgs })
                 handlers.append(handler)

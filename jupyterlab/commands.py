@@ -90,7 +90,7 @@ class ProgressProcess(Process):
         self.logger = _ensure_logger(logger)
         self._last_line = ''
         self.cmd = cmd
-        self.logger.debug('> ' + list2cmdline(cmd))
+        self.logger.debug(f'> {list2cmdline(cmd)}')
 
         self.proc = self._create_process(
             cwd=cwd,
@@ -255,9 +255,10 @@ def ensure_app(app_dir):
     if osp.exists(pjoin(app_dir, 'static', 'index.html')):
         return
 
-    msgs = ['JupyterLab application assets not found in "%s"' % app_dir,
-            'Please run `jupyter lab build` or use a different app directory']
-    return msgs
+    return [
+        'JupyterLab application assets not found in "%s"' % app_dir,
+        'Please run `jupyter lab build` or use a different app directory',
+    ]
 
 
 def watch_packages(logger=None):
@@ -619,7 +620,7 @@ class _AppHandler(object):
             config = self._read_build_config()
             uninstalled = config.get('uninstalled_core_extensions', [])
             if extension in uninstalled:
-                self.logger.info('Installing core extension %s' % extension)
+                self.logger.info(f'Installing core extension {extension}')
                 uninstalled.remove(extension)
                 config['uninstalled_core_extensions'] = uninstalled
                 self._write_build_config(config)
@@ -638,7 +639,7 @@ class _AppHandler(object):
         # Local directories get name mangled and stored in metadata.
         if info['is_dir']:
             config = self._read_build_config()
-            local = config.setdefault('local_extensions', dict())
+            local = config.setdefault('local_extensions', {})
             local[name] = info['source']
             self._write_build_config(config)
 
@@ -721,7 +722,7 @@ class _AppHandler(object):
         logger = self.logger
         info = self.info
 
-        logger.info('JupyterLab v%s' % info['version'])
+        logger.info(f"JupyterLab v{info['version']}")
 
         if info['federated_extensions'] or info['extensions']:
             info['compat_errors'] = self._get_extension_compat()
@@ -734,34 +735,31 @@ class _AppHandler(object):
             self._list_extensions(info, 'app')
             self._list_extensions(info, 'sys')
 
-        local = info['local_extensions']
-        if local:
+        if local := info['local_extensions']:
             logger.info('\n   local extensions:')
             for name in sorted(local):
-                logger.info('        %s: %s' % (name, local[name]))
+                logger.info(f'        {name}: {local[name]}')
 
-        linked_packages = info['linked_packages']
-        if linked_packages:
+        if linked_packages := info['linked_packages']:
             logger.info('\n   linked packages:')
             for key in sorted(linked_packages):
                 source = linked_packages[key]['source']
-                logger.info('        %s: %s' % (key, source))
+                logger.info(f'        {key}: {source}')
 
-        uninstalled_core = info['uninstalled_core']
-        if uninstalled_core:
+        if uninstalled_core := info['uninstalled_core']:
             logger.info('\nUninstalled core extensions:')
-            [logger.info('    %s' % item) for item in sorted(uninstalled_core)]
+            [logger.info(f'    {item}') for item in sorted(uninstalled_core)]
 
         all_exts = list(info['federated_extensions']) + list(info['extensions']) + list(info['core_extensions'])
-        # Ignore disabled extensions that are not installed
-        disabled = [i for i in info['disabled'] if i.partition(':')[0] in all_exts]
-        if disabled:
+        if disabled := [
+            i for i in info['disabled'] if i.partition(':')[0] in all_exts
+        ]:
             logger.info('\nDisabled extensions:')
             for item in sorted(disabled):
                 # Show that all plugins will be disabled if the whole extension matches
                 if item in all_exts:
                     item += ' (all plugins)'
-                logger.info('    %s' % item)
+                logger.info(f'    {item}')
 
         # Here check if modules are improperly shadowed
         improper_shadowed = []
@@ -773,12 +771,11 @@ class _AppHandler(object):
 
         if improper_shadowed:
             logger.info('\nThe following source extensions are overshadowed by older prebuilt extensions:')
-            [logger.info('    %s' % name) for name in sorted(improper_shadowed)]
+            [logger.info(f'    {name}') for name in sorted(improper_shadowed)]
 
-        messages = self.build_check(fast=True)
-        if messages:
+        if messages := self.build_check(fast=True):
             logger.info('\nBuild recommended, please run `jupyter lab build`:')
-            [logger.info('    %s' % item) for item in messages]
+            [logger.info(f'    {item}') for item in messages]
 
     def build_check(self, fast=False):
         """Determine whether JupyterLab should be built.
@@ -797,7 +794,7 @@ class _AppHandler(object):
 
         static_data = self.info['static_data']
         old_jlab = static_data['jupyterlab']
-        old_deps = static_data.get('dependencies', dict())
+        old_deps = static_data.get('dependencies', {})
 
         # Look for mismatched version.
         static_version = old_jlab.get('version', '')
@@ -812,7 +809,7 @@ class _AppHandler(object):
         # Look for mismatched extensions.
         new_package = self._get_package_template(silent=fast)
         new_jlab = new_package['jupyterlab']
-        new_deps = new_package.get('dependencies', dict())
+        new_deps = new_package.get('dependencies', {})
 
         for ext_type in ['extensions', 'mimeExtensions']:
             # Extensions that were added.
@@ -820,14 +817,14 @@ class _AppHandler(object):
                 if ext in shadowed_exts:
                     continue
                 if ext not in old_jlab[ext_type]:
-                    messages.append('%s needs to be included in build' % ext)
+                    messages.append(f'{ext} needs to be included in build')
 
             # Extensions that were removed.
             for ext in old_jlab[ext_type]:
                 if ext in shadowed_exts:
                     continue
                 if ext not in new_jlab[ext_type]:
-                    messages.append('%s needs to be removed from build' % ext)
+                    messages.append(f'{ext} needs to be removed from build')
 
         # Look for mismatched dependencies
         src_pkg_dir = pjoin(REPO_ROOT, 'packages')
@@ -849,7 +846,7 @@ class _AppHandler(object):
                 continue
             dname = pjoin(app_dir, 'extensions')
             if self._check_local(name, source, dname):
-                messages.append('%s content changed' % name)
+                messages.append(f'{name} content changed')
 
         # Look for updated linked packages.
         for (name, item) in linked.items():
@@ -857,7 +854,7 @@ class _AppHandler(object):
                 continue
             dname = pjoin(app_dir, 'staging', 'linked_packages')
             if self._check_local(name, item['source'], dname):
-                messages.append('%s content changed' % name)
+                messages.append(f'{name} content changed')
 
         return messages
 
@@ -870,10 +867,20 @@ class _AppHandler(object):
         logger = self.logger
 
         if name in info['federated_extensions']:
-            if info['federated_extensions'][name].get('install', dict()).get('uninstallInstructions', None):
-                logger.error('JupyterLab cannot uninstall this extension. %s' % info['federated_extensions'][name]['install']['uninstallInstructions'])
+            if (
+                info['federated_extensions'][name]
+                .get('install', {})
+                .get('uninstallInstructions', None)
+            ):
+                logger.error(
+                    f"JupyterLab cannot uninstall this extension. {info['federated_extensions'][name]['install']['uninstallInstructions']}"
+                )
+
             else:
-                logger.error('JupyterLab cannot uninstall %s since it was installed outside of JupyterLab. Use the same method used to install this extension to uninstall this extension.' % name)
+                logger.error(
+                    f'JupyterLab cannot uninstall {name} since it was installed outside of JupyterLab. Use the same method used to install this extension to uninstall this extension.'
+                )
+
             return False
 
         # Allow for uninstalled core extensions.
@@ -881,7 +888,7 @@ class _AppHandler(object):
             config = self._read_build_config()
             uninstalled = config.get('uninstalled_core_extensions', [])
             if name not in uninstalled:
-                logger.info('Uninstalling core extension %s' % name)
+                logger.info(f'Uninstalling core extension {name}')
                 uninstalled.append(name)
                 config['uninstalled_core_extensions'] = uninstalled
                 self._write_build_config(config)
@@ -893,13 +900,13 @@ class _AppHandler(object):
         for (extname, data) in info['extensions'].items():
             path = data['path']
             if extname == name:
-                msg = 'Uninstalling %s from %s' % (name, osp.dirname(path))
+                msg = f'Uninstalling {name} from {osp.dirname(path)}'
                 logger.info(msg)
                 os.remove(path)
                 # Handle local extensions.
                 if extname in local:
                     config = self._read_build_config()
-                    data = config.setdefault('local_extensions', dict())
+                    data = config.setdefault('local_extensions', {})
                     del data[extname]
                     self._write_build_config(config)
                 return True
@@ -956,13 +963,13 @@ class _AppHandler(object):
         except URLError:
             return False
         if latest is None:
-            self.logger.warn('No compatible version found for %s!' % (name,))
+            self.logger.warn(f'No compatible version found for {name}!')
             return False
         if latest == data['version']:
             self.logger.info('Extension %r already up to date' % name)
             return False
-        self.logger.info('Updating %s to version %s' % (name, latest))
-        return self.install_extension('%s@%s' % (name, latest))
+        self.logger.info(f'Updating {name} to version {latest}')
+        return self.install_extension(f'{name}@{latest}')
 
     def link_package(self, path):
         """Link a package at the given path.
@@ -983,11 +990,11 @@ class _AppHandler(object):
 
         # Warn that it is a linked package.
         self.logger.warning('Installing %s as a linked package because it does not have extension metadata:', path)
-        [self.logger.warning('   %s' % m) for m in messages]
+        [self.logger.warning(f'   {m}') for m in messages]
 
         # Add to metadata.
         config = self._read_build_config()
-        linked = config.setdefault('linked_packages', dict())
+        linked = config.setdefault('linked_packages', {})
         linked[info['name']] = info['source']
         self._write_build_config(config)
 
@@ -1002,7 +1009,7 @@ class _AppHandler(object):
         """
         path = _normalize_path(path)
         config = self._read_build_config()
-        linked = config.setdefault('linked_packages', dict())
+        linked = config.setdefault('linked_packages', {})
 
         found = None
         for (name, source) in linked.items():
@@ -1012,7 +1019,7 @@ class _AppHandler(object):
         if found:
             del linked[found]
         else:
-            local = config.setdefault('local_extensions', dict())
+            local = config.setdefault('local_extensions', {})
             for (name, source) in local.items():
                 if name == path or source == path:
                     found = name
@@ -1022,7 +1029,7 @@ class _AppHandler(object):
                 os.remove(path)
 
         if not found:
-            raise ValueError('No linked package for %s' % path)
+            raise ValueError(f'No linked package for {path}')
 
         self._write_build_config(config)
         return True
@@ -1063,7 +1070,7 @@ class _AppHandler(object):
                 extension, info, check_installed_only)
 
         if extension in info["linked_packages"]:
-            self.logger.info('%s:%s' % (extension, GREEN_ENABLED))
+            self.logger.info(f'{extension}:{GREEN_ENABLED}')
             return True
 
         return self._check_common_extension(
@@ -1073,46 +1080,44 @@ class _AppHandler(object):
         """Check if a core extension is enabled or disabled
         """
         if extension in info['uninstalled_core']:
-            self.logger.info('%s:%s' % (extension, RED_X))
+            self.logger.info(f'{extension}:{RED_X}')
             return False
         if check_installed_only:
-            self.logger.info('%s: %s' % (extension, GREEN_OK))
+            self.logger.info(f'{extension}: {GREEN_OK}')
             return True
         if extension in info['disabled_core']:
-            self.logger.info('%s: %s' % (extension, RED_DISABLED))
+            self.logger.info(f'{extension}: {RED_DISABLED}')
             return False
-        self.logger.info('%s:%s' % (extension, GREEN_ENABLED))
+        self.logger.info(f'{extension}:{GREEN_ENABLED}')
         return True
 
     def _check_common_extension(self, extension, info, check_installed_only):
         """Check if a common (non-core) extension is enabled or disabled
         """
         if extension not in info['extensions']:
-            self.logger.info('%s:%s' % (extension, RED_X))
+            self.logger.info(f'{extension}:{RED_X}')
             return False
 
-        errors = self._get_extension_compat()[extension]
-        if errors:
-            self.logger.info('%s:%s (compatibility errors)' %
-                             (extension, RED_X))
+        if errors := self._get_extension_compat()[extension]:
+            self.logger.info(f'{extension}:{RED_X} (compatibility errors)')
             return False
 
         if check_installed_only:
-            self.logger.info('%s: %s' % (extension, GREEN_OK))
+            self.logger.info(f'{extension}: {GREEN_OK}')
             return True
 
         if _is_disabled(extension, info['disabled']):
-            self.logger.info('%s: %s' % (extension, RED_DISABLED))
+            self.logger.info(f'{extension}: {RED_DISABLED}')
             return False
 
-        self.logger.info('%s:%s' % (extension, GREEN_ENABLED))
+        self.logger.info(f'{extension}:{GREEN_ENABLED}')
         return True
 
     def _get_app_info(self):
         """Get information about the app.
         """
 
-        info = dict()
+        info = {}
         info['core_data'] = core_data = self.core_data
         info['extensions'] = extensions = self._get_extensions(core_data)
 
@@ -1155,10 +1160,9 @@ class _AppHandler(object):
 
         info['disabled'] = page_config.get('disabledExtensions', [])
 
-        disabled_core = []
-        for key in info['core_extensions']:
-            if key in info['disabled']:
-                disabled_core.append(key)
+        disabled_core = [
+            key for key in info['core_extensions'] if key in info['disabled']
+        ]
 
         info['disabled_core'] = disabled_core
 
@@ -1180,7 +1184,7 @@ class _AppHandler(object):
         if splice_source:
             self.logger.debug('Splicing dev packages into app directory.')
             source_dir = DEV_DIR
-            version = __version__ + '-spliced'
+            version = f'{__version__}-spliced'
         else:
             source_dir = pjoin(HERE, 'staging')
 
@@ -1235,7 +1239,7 @@ class _AppHandler(object):
             # Handle a local extension that was removed.
             if key not in extensions:
                 config = self._read_build_config()
-                data = config.setdefault('local_extensions', dict())
+                data = config.setdefault('local_extensions', {})
                 del data[key]
                 self._write_build_config(config)
                 removed = True
@@ -1328,7 +1332,7 @@ class _AppHandler(object):
                 path = path.lower()
             return path
 
-        jlab['linkedPackages'] = dict()
+        jlab['linkedPackages'] = {}
 
         # Handle local extensions.
         for (key, source) in local.items():
@@ -1347,7 +1351,7 @@ class _AppHandler(object):
             jlab['linkedPackages'][key] = item['source']
             data['resolutions'][key] = format_path(path)
 
-        data['jupyterlab']['extensionMetadata'] = dict()
+        data['jupyterlab']['extensionMetadata'] = {}
 
         # Handle extensions
         compat_errors = self._get_extension_compat()
@@ -1370,7 +1374,7 @@ class _AppHandler(object):
                     continue
                 if ext is True:
                     ext = ''
-                jlab[item + 's'][key] = ext
+                jlab[f'{item}s'][key] = ext
 
                 # Add metadata for the extension
                 data['jupyterlab']['extensionMetadata'][key] = jlab_data
@@ -1431,7 +1435,7 @@ class _AppHandler(object):
         """Get the extensions for the application.
         """
         app_dir = self.app_dir
-        extensions = dict()
+        extensions = {}
 
         # Get system level packages.
         sys_path = pjoin(self.sys_dir, 'extensions')
@@ -1451,13 +1455,13 @@ class _AppHandler(object):
     def _get_extensions_in_dir(self, dname, core_data):
         """Get the extensions in a given directory.
         """
-        extensions = dict()
+        extensions = {}
         location = 'app' if dname == self.app_dir else 'sys'
         for target in glob(pjoin(dname, 'extensions', '*.tgz')):
             data = read_package(target)
-            deps = data.get('dependencies', dict())
+            deps = data.get('dependencies', {})
             name = data['name']
-            jlab = data.get('jupyterlab', dict())
+            jlab = data.get('jupyterlab', {})
             path = osp.abspath(target)
 
             filename = osp.basename(target)
@@ -1481,7 +1485,7 @@ class _AppHandler(object):
     def _get_extension_compat(self):
         """Get the extension compatibility info.
         """
-        compat = dict()
+        compat = {}
         core_data = self.info['core_data']
         seen = set()
         for (name, data) in self.info['federated_extensions'].items():
@@ -1516,7 +1520,7 @@ class _AppHandler(object):
             data = read_package(path)
             name = data['name']
             if name not in info:
-                self.logger.warn('Removing orphaned linked package %s' % name)
+                self.logger.warn(f'Removing orphaned linked package {name}')
                 os.remove(path)
                 continue
             item = info[name]
@@ -1549,15 +1553,15 @@ class _AppHandler(object):
         """
         self._ensure_disabled_info()
         logger = self.logger
-        names = info['%s_extensions' % ext_type]
+        names = info[f'{ext_type}_extensions']
         if not names:
             return
 
-        dname = info['%s_dir' % ext_type]
+        dname = info[f'{ext_type}_dir']
 
         error_accumulator = {}
 
-        logger.info('   %s dir: %s' % (ext_type, dname))
+        logger.info(f'   {ext_type} dir: {dname}')
         for name in sorted(names):
             if name in info['federated_extensions']:
                 continue
@@ -1566,21 +1570,16 @@ class _AppHandler(object):
             errors = info['compat_errors'][name]
             extra = ''
             if _is_disabled(name, info['disabled']):
-                extra += ' %s' % RED_DISABLED
+                extra += f' {RED_DISABLED}'
             else:
-                extra += ' %s' % GREEN_ENABLED
-            if errors:
-                extra += ' %s' % RED_X
-            else:
-                extra += ' %s' % GREEN_OK
+                extra += f' {GREEN_ENABLED}'
+            extra += f' {RED_X}' if errors else f' {GREEN_OK}'
             if data['is_local']:
                 extra += '*'
-            # If we have the package name in the data, this means this extension's name is the alias name
-            alias_package_source = data['alias_package_source']
-            if alias_package_source:
-                logger.info('        %s %s v%s%s' % (name, alias_package_source, version, extra))
+            if alias_package_source := data['alias_package_source']:
+                logger.info(f'        {name} {alias_package_source} v{version}{extra}')
             else:
-                logger.info('        %s v%s%s' % (name, version, extra))
+                logger.info(f'        {name} v{version}{extra}')
             if errors:
                 error_accumulator[name] = (version, errors)
 

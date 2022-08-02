@@ -90,7 +90,7 @@ def develop_labextension(path, symlink=True, overwrite=False,
     full_dest = normpath(pjoin(labext, destination))
     if overwrite and os.path.lexists(full_dest):
         if logger:
-            logger.info("Removing: %s" % full_dest)
+            logger.info(f"Removing: {full_dest}")
         if os.path.isdir(full_dest) and not os.path.islink(full_dest):
             shutil.rmtree(full_dest)
         else:
@@ -103,7 +103,7 @@ def develop_labextension(path, symlink=True, overwrite=False,
         path = os.path.abspath(path)
         if not os.path.exists(full_dest):
             if logger:
-                logger.info("Symlinking: %s -> %s" % (full_dest, path))
+                logger.info(f"Symlinking: {full_dest} -> {path}")
             try:
                 os.symlink(path, full_dest)
             except OSError as e:
@@ -116,7 +116,7 @@ def develop_labextension(path, symlink=True, overwrite=False,
                 raise
 
         elif not os.path.islink(full_dest):
-            raise ValueError("%s exists and is not a symlink" % full_dest)
+            raise ValueError(f"{full_dest} exists and is not a symlink")
 
     elif os.path.isdir(path):
         path = pjoin(os.path.abspath(path), '') # end in path separator
@@ -124,7 +124,7 @@ def develop_labextension(path, symlink=True, overwrite=False,
             dest_dir = pjoin(full_dest, parent[len(path):])
             if not os.path.exists(dest_dir):
                 if logger:
-                    logger.info("Making directory: %s" % dest_dir)
+                    logger.info(f"Making directory: {dest_dir}")
                 os.makedirs(dest_dir)
             for file_name in files:
                 src = pjoin(parent, file_name)
@@ -152,7 +152,7 @@ def develop_labextension_py(module, user=False, sys_prefix=False, overwrite=True
         src = os.path.join(base_path, labext['src'])
         dest = labext['dest']
         if logger:
-            logger.info("Installing %s -> %s" % (src, dest))
+            logger.info(f"Installing {src} -> {dest}")
 
         if not os.path.exists(src):
             build_labextension(base_path, logger=logger)
@@ -174,7 +174,7 @@ def build_labextension(path, logger=None, development=False, static_url=None, so
     ext_path = osp.abspath(path)
 
     if logger:
-        logger.info('Building extension in %s' % path)
+        logger.info(f'Building extension in {path}')
 
     builder = _ensure_builder(ext_path, core_path)
 
@@ -196,7 +196,7 @@ def watch_labextension(path, labextensions_path, logger=None, development=False,
     ext_path = osp.abspath(path)
 
     if logger:
-        logger.info('Building extension in %s' % path)
+        logger.info(f'Building extension in {path}')
 
     # Check to see if we need to create a symlink
     federated_extensions = get_federated_extensions(labextensions_path)
@@ -237,10 +237,16 @@ def _ensure_builder(ext_path, core_path):
     with open(osp.join(ext_path, 'package.json')) as fid:
         ext_data = json.load(fid)
     depVersion1 = core_data['devDependencies']['@jupyterlab/builder']
-    depVersion2 = ext_data.get('devDependencies', dict()).get('@jupyterlab/builder')
-    depVersion2 = depVersion2 or ext_data.get('dependencies', dict()).get('@jupyterlab/builder')
+    depVersion2 = ext_data.get('devDependencies', {}).get('@jupyterlab/builder')
+    depVersion2 = depVersion2 or ext_data.get('dependencies', {}).get(
+        '@jupyterlab/builder'
+    )
+
     if depVersion2 is None:
-        raise ValueError('Extensions require a devDependency on @jupyterlab/builder@%s' % depVersion1)
+        raise ValueError(
+            f'Extensions require a devDependency on @jupyterlab/builder@{depVersion1}'
+        )
+
 
     # if we have installed from disk (version is a path), assume we know what
     # we are doing and do not check versions.
@@ -249,7 +255,10 @@ def _ensure_builder(ext_path, core_path):
             depVersion2 = json.load(fid).get('version')
     overlap = _test_overlap(depVersion1, depVersion2, drop_prerelease1=True, drop_prerelease2=True)
     if not overlap:
-        raise ValueError('Extensions require a devDependency on @jupyterlab/builder@%s, you have a dependency on %s' % (depVersion1, depVersion2))
+        raise ValueError(
+            f'Extensions require a devDependency on @jupyterlab/builder@{depVersion1}, you have a dependency on {depVersion2}'
+        )
+
     if not osp.exists(osp.join(ext_path, 'node_modules')):
         subprocess.check_call(['jlpm'], cwd=ext_path)
 
@@ -285,10 +294,10 @@ def _should_copy(src, dest, logger=None):
         # we add a fudge factor to work around a bug in python 2.x
         # that was fixed in python 3.x: https://bugs.python.org/issue12904
         if logger:
-            logger.warn("Out of date: %s" % dest)
+            logger.warn(f"Out of date: {dest}")
         return True
     if logger:
-        logger.info("Up to date: %s" % dest)
+        logger.info(f"Up to date: {dest}")
     return False
 
 
@@ -307,7 +316,7 @@ def _maybe_copy(src, dest, logger=None):
     """
     if _should_copy(src, dest, logger=logger):
         if logger:
-            logger.info("Copying: %s -> %s" % (src, dest))
+            logger.info(f"Copying: {src} -> {dest}")
         shutil.copy2(src, dest)
 
 
@@ -335,19 +344,19 @@ def _get_labextension_dir(user=False, sys_prefix=False, prefix=None, labextensio
     conflicting_set = ['{}={!r}'.format(n, v) for n, v in conflicting if v]
     if len(conflicting_set) > 1:
         raise ArgumentConflict(
-            "cannot specify more than one of user, sys_prefix, prefix, or labextensions_dir, but got: {}"
-            .format(', '.join(conflicting_set)))
+            f"cannot specify more than one of user, sys_prefix, prefix, or labextensions_dir, but got: {', '.join(conflicting_set)}"
+        )
+
     if user:
-        labext = pjoin(jupyter_data_dir(), u'labextensions')
+        return pjoin(jupyter_data_dir(), u'labextensions')
     elif sys_prefix:
-        labext = pjoin(ENV_JUPYTER_PATH[0], u'labextensions')
+        return pjoin(ENV_JUPYTER_PATH[0], u'labextensions')
     elif prefix:
-        labext = pjoin(prefix, 'share', 'jupyter', 'labextensions')
+        return pjoin(prefix, 'share', 'jupyter', 'labextensions')
     elif labextensions_dir:
-        labext = labextensions_dir
+        return labextensions_dir
     else:
-        labext = pjoin(SYSTEM_JUPYTER_PATH[0], 'labextensions')
-    return labext
+        return pjoin(SYSTEM_JUPYTER_PATH[0], 'labextensions')
 
 
 def _get_labextension_metadata(module):
@@ -367,7 +376,7 @@ def _get_labextension_metadata(module):
     """
     mod_path = osp.abspath(module)
     if not osp.exists(mod_path):
-        raise FileNotFoundError('The path `{}` does not exist.'.format(mod_path))
+        raise FileNotFoundError(f'The path `{mod_path}` does not exist.')
 
     errors = []
 
@@ -383,8 +392,10 @@ def _get_labextension_metadata(module):
     try:
         package = subprocess.check_output([sys.executable, 'setup.py', '--name'], cwd=mod_path).decode('utf8').strip()
     except subprocess.CalledProcessError:
-        raise FileNotFoundError('The Python package `{}` is not a valid package, '
-                'it is missing the `setup.py` file.'.format(module))
+        raise FileNotFoundError(
+            f'The Python package `{module}` is not a valid package, it is missing the `setup.py` file.'
+        )
+
 
     # Make sure the package is installed
     import pkg_resources
@@ -410,4 +421,6 @@ def _get_labextension_metadata(module):
         except Exception as exc:
             errors.append(exc)
 
-    raise ModuleNotFoundError('There is no labextension at {}. Errors encountered: {}'.format(module, errors))
+    raise ModuleNotFoundError(
+        f'There is no labextension at {module}. Errors encountered: {errors}'
+    )

@@ -94,11 +94,12 @@ def fetch_long(http_server_client, jp_auth_header, jp_base_url):
         path_url = url_escape(url_path_join(*parts), plus=False)
         path_url = url_path_join(jp_base_url, path_url)
         params_url = urllib.parse.urlencode(params)
-        url = path_url + "?" + params_url
+        url = f"{path_url}?{params_url}"
         # Add auth keys to header
         headers.update(jp_auth_header)
         # Make request.
         return http_server_client.fetch(
             url, headers=headers, request_timeout=250, **kwargs
         )
+
     return client_fetch

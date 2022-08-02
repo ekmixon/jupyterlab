@@ -70,7 +70,7 @@ class YjsEchoWebSocket(WebSocketHandler):
                 # print('Acquired new lock: ', room.lock)
                 # return acquired lock
                 self.write_message(bytes([ServerMessageType.ACQUIRE_LOCK]) + room.lock.to_bytes(4, byteorder = 'little'), binary=True)
-            
+
             elif room.lock_holder == self.id :
                 # print('Update lock: ', room.timeout)
                 room.timeout = now

@@ -45,7 +45,13 @@ if MILESTONE not in ranges:
     exit(1)
 
 
-out = subprocess.run("git log {} --format='%H,%cE,%s'".format(ranges[MILESTONE]), shell=True, encoding='utf8', stdout=subprocess.PIPE)
+out = subprocess.run(
+    f"git log {ranges[MILESTONE]} --format='%H,%cE,%s'",
+    shell=True,
+    encoding='utf8',
+    stdout=subprocess.PIPE,
+)
+
 commits = {i[0]: (i[1], i[2]) for i in (x.split(',',2) for x in out.stdout.splitlines())}
 
 
@@ -85,7 +91,7 @@ query test($cursor: String) {
 
 
 
-headers = {'Authorization': 'token %s' % api_token}
+headers = {'Authorization': f'token {api_token}'}
 # construct a commit to PR dictionary
 prs = {}
 large_prs = []
@@ -102,8 +108,11 @@ while True:
             large_prs.append(pr['number'])
             continue
             # TODO fetch commits
-        prs[pr['number']] = {'mergeCommit': pr['mergeCommit']['oid'],
-                            'commits': set(i['commit']['oid'] for i in pr['commits']['nodes'])}
+        prs[pr['number']] = {
+            'mergeCommit': pr['mergeCommit']['oid'],
+            'commits': {i['commit']['oid'] for i in pr['commits']['nodes']},
+        }
+
 
     has_next_page = results['pageInfo']['hasNextPage']
     cursor = results['pageInfo']['endCursor']
@@ -208,13 +217,17 @@ if len(notfound):
 This probably means the commit's PR needs to be assigned to this milestone,
 or the commit was pushed to master directly.
 """)
-    print('\n'.join('%s %s %s'%(c, commits[c][0], commits[c][1]) for c in notfound))
-    prs_to_check = [c for c in notfound if 'Merge pull request #' in commits[c][1] and commits[c][0] == 'noreply@github.com']
-    if len(prs_to_check)>0:
+    print('\n'.join(f'{c} {commits[c][0]} {commits[c][1]}' for c in notfound))
+    if prs_to_check := [
+        c
+        for c in notfound
+        if 'Merge pull request #' in commits[c][1]
+        and commits[c][0] == 'noreply@github.com'
+    ]:
         print()
         print("Try checking these PRs. They probably should be in the milestone, but probably aren't:")
         print()
-        print('\n'.join('%s %s'%(c, commits[c][1]) for c in prs_to_check))
+        print('\n'.join(f'{c} {commits[c][1]}' for c in prs_to_check))
 else:
     print('Congratulations! All commits in the commit history are included in some PR in this milestone.')
 

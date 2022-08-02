@@ -57,7 +57,7 @@ try:
         data_files=get_data_files(data_files_spec)
     )
 except ImportError:
-    setup_args = dict()
+    setup_args = {}
 
 
 if __name__ == '__main__':

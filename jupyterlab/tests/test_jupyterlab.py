@@ -77,7 +77,7 @@ class AppHandlerTest(TestCase):
 
         self.data_dir = pjoin(self.test_dir, 'data')
         self.config_dir = pjoin(self.test_dir, 'config')
-        self.pkg_names = dict()
+        self.pkg_names = {}
 
         # Copy in the mock packages.
         for name in ['extension', 'incompat', 'package', 'mimeextension']:
@@ -97,7 +97,7 @@ class AppHandlerTest(TestCase):
             if not os.path.exists(pjoin(dest, 'node_modules')):
                 os.makedirs(pjoin(dest, 'node_modules'))
 
-            setattr(self, 'mock_' + name, dest)
+            setattr(self, f'mock_{name}', dest)
             with open(pjoin(dest, 'package.json')) as fid:
                 data = json.load(fid)
             self.pkg_names[name] = data['name']
@@ -437,14 +437,12 @@ class TestExtension(AppHandlerTest):
         build()
         # check staging directory.
         entry = pjoin(self.app_dir, 'staging', 'build', 'index.out.js')
-        with open(entry) as fid:
-            data = fid.read()
+        data = Path(entry).read_text()
         assert self.pkg_names['extension'] in data
 
         # check static directory.
         entry = pjoin(self.app_dir, 'static', 'index.out.js')
-        with open(entry) as fid:
-            data = fid.read()
+        data = Path(entry).read_text()
         assert self.pkg_names['extension'] in data
 
     @pytest.mark.slow
@@ -455,14 +453,12 @@ class TestExtension(AppHandlerTest):
         assert '-spliced' in get_app_version(app_options)
         # check staging directory.
         entry = pjoin(self.app_dir, 'staging', 'build', 'index.out.js')
-        with open(entry) as fid:
-            data = fid.read()
+        data = Path(entry).read_text()
         assert self.pkg_names['extension'] in data
 
         # check static directory.
         entry = pjoin(self.app_dir, 'static', 'index.out.js')
-        with open(entry) as fid:
-            data = fid.read()
+        data = Path(entry).read_text()
         assert self.pkg_names['extension'] in data
 
     @pytest.mark.slow
@@ -472,8 +468,7 @@ class TestExtension(AppHandlerTest):
 
         # check static directory.
         entry = pjoin(self.app_dir, 'static', 'index.out.js')
-        with open(entry) as fid:
-            data = fid.read()
+        data = Path(entry).read_text()
         assert self.pkg_names['extension'] in data
 
         pkg = pjoin(self.app_dir, 'static', 'package.json')
@@ -520,8 +515,7 @@ class TestExtension(AppHandlerTest):
 
         # check static directory.
         entry = pjoin(app_dir, 'static', 'index.out.js')
-        with open(entry) as fid:
-            data = fid.read()
+        data = Path(entry).read_text()
         assert self.pkg_names['extension'] in data
 
         pkg = pjoin(app_dir, 'static', 'package.json')
@@ -710,7 +704,7 @@ class TestExtension(AppHandlerTest):
         installed = []
         def _mock_install(self, name, *args, **kwargs):
             installed.append(name[0] + name[1:].split('@')[0])
-            return dict(name=name, is_dir=False, path='foo/bar/' + name)
+            return dict(name=name, is_dir=False, path=f'foo/bar/{name}')
 
         def _mock_latest(self, name):
             return '10000.0.0'
@@ -740,7 +734,7 @@ class TestExtension(AppHandlerTest):
         installed = []
         def _mock_install(self, name, *args, **kwargs):
             installed.append(name[0] + name[1:].split('@')[0])
-            return dict(name=name, is_dir=False, path='foo/bar/' + name)
+            return dict(name=name, is_dir=False, path=f'foo/bar/{name}')
 
         def _mock_latest(self, name):
             return '10000.0.0'

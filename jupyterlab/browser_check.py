@@ -56,7 +56,13 @@ class LogErrorHandler(logging.Handler):
         # These occur when we forcibly close Websockets or
         # browser connections during the test.
         # https://github.com/tornadoweb/tornado/issues/2834
-        if hasattr(record, 'exc_info') and not record.exc_info is None and isinstance(record.exc_info[1], (StreamClosedError, WebSocketClosedError)):
+        if (
+            hasattr(record, 'exc_info')
+            and record.exc_info is not None
+            and isinstance(
+                record.exc_info[1], (StreamClosedError, WebSocketClosedError)
+            )
+        ):
             return
         return super().filter(record)
 
@@ -140,7 +146,7 @@ async def run_async_process(cmd, **kwargs):
             **kwargs)
     stdout, stderr = await proc.communicate()
     if proc.returncode != 0:
-        raise RuntimeError(str(cmd) + ' exited with ' + str(proc.returncode))
+        raise RuntimeError(f'{str(cmd)} exited with {str(proc.returncode)}')
     return stdout, stderr
 
 
@@ -185,7 +191,7 @@ class BrowserApp(LabApp):
     test_browser = Bool(True)
 
     def initialize_settings(self):
-        self.settings.setdefault('page_config_data', dict())
+        self.settings.setdefault('page_config_data', {})
         self.settings['page_config_data']['browserTest'] = True
         self.settings['page_config_data']['buildAvailable'] = False
         self.settings['page_config_data']['exposeAppInBrowser'] = True

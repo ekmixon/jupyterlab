@@ -9,7 +9,10 @@ lab_ext_name = "test_no_hyphens"
 HERE = path.abspath(path.dirname(__file__))
 lab_path = path.join(HERE, module_name, "labextension")
 
-data_files_spec = [("share/jupyter/labextensions/" + lab_ext_name, lab_path, "**")]
+data_files_spec = [
+    (f"share/jupyter/labextensions/{lab_ext_name}", lab_path, "**")
+]
+
 
 setup_args = dict(
     name=name,
@@ -24,10 +27,10 @@ try:
         build_cmd="build:labextension", build_dir=lab_path, npm=["jlpm"]
     )
     cmdclass = wrap_installers(post_develop=post_develop)
-    setup_args.update(dict(
-        cmdclass=cmdclass,
-        data_files=get_data_files(data_files_spec)
-    ))
+    setup_args |= dict(
+        cmdclass=cmdclass, data_files=get_data_files(data_files_spec)
+    )
+
 except ImportError:
     pass
 

@@ -58,8 +58,7 @@ def _create_template_dir():
 
 
 def _create_static_dir():
-    static_dir = tempfile.mkdtemp(prefix='mock_static')
-    return static_dir
+    return tempfile.mkdtemp(prefix='mock_static')
 
 
 def _create_schemas_dir():
@@ -122,7 +121,7 @@ class TestEnv(object):
         self.path_patch.stop()
         try:
             self.test_dir.cleanup()
-        except (OSError, PermissionError) as e:
+        except OSError as e:
             pass
 
     def __enter__(self):
@@ -208,12 +207,8 @@ class ProcessTestApp(ProcessApp):
 
 
 jest_aliases = dict(base_aliases)
-jest_aliases.update({
-    'testPathPattern': 'JestApp.testPathPattern'
-})
-jest_aliases.update({
-    'testNamePattern': 'JestApp.testNamePattern'
-})
+jest_aliases['testPathPattern'] = 'JestApp.testPathPattern'
+jest_aliases['testNamePattern'] = 'JestApp.testNamePattern'
 
 
 jest_flags = dict(base_flags)
@@ -275,10 +270,7 @@ class JestApp(ProcessTestApp):
             cmd += [jest, '--coverage']
         elif debug:
             cmd += ['--inspect-brk', jest, '--no-cache']
-            if self.watchAll:
-                cmd += ['--watchAll']
-            else:
-                cmd += ['--watch']
+            cmd += ['--watchAll'] if self.watchAll else ['--watch']
         else:
             cmd += [jest]
 

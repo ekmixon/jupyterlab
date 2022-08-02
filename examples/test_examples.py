@@ -21,7 +21,7 @@ def header(path):
     test_name = osp.basename(path)
     print(
         "\n".join(
-            ("\n", "*" * 40, "Starting %s test in %s" % (test_name, path), "*" * 40)
+            ("\n", "*" * 40, f"Starting {test_name} test in {path}", "*" * 40)
         ),
         flush=True,
     )
@@ -32,14 +32,14 @@ def main():
     parser.add_argument("--testPath", help="paths containing this string are tested")
     args = parser.parse_args()
 
-    paths = [i for i in glob.glob("%s/*" % here) if osp.isdir(i)]
+    paths = [i for i in glob.glob(f"{here}/*") if osp.isdir(i)]
 
     services_dir = osp.abspath(osp.join(here, "../packages/services/examples"))
-    paths += [i for i in glob.glob("%s/*" % services_dir)]
+    paths += list(glob.glob(f"{services_dir}/*"))
     if args.testPath:
         paths = [p for p in paths if args.testPath in p]
 
-    print("Testing %s" % paths)
+    print(f"Testing {paths}")
 
     count = 0
     for path in sorted(paths):
